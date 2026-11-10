@@ -1,0 +1,58 @@
+<?php
+
+return [
+    'ACCOUNTS MANAGEMENT' => [
+        'ac_dashboard' => [
+            'label' => 'Accounting Dashboard',
+            'permissions' => ['view' => 'View', 'all' => 'All'],
+        ],
+        'ac_branch' => [
+            'label' => 'Branch',
+            'permissions' => ['list' => 'List', 'add' => 'Create', 'edit' => 'Edit', 'view' => 'View', 'delete' => 'Delete', 'all' => 'All'],
+        ],
+        'ac_payment_method' => [
+            'label' => 'Payment Methods',
+            'permissions' => ['list' => 'List', 'add' => 'Create', 'edit' => 'Edit', 'view' => 'View', 'delete' => 'Delete', 'all' => 'All'],
+        ],
+        'ac_fiscal_year' => [
+            'label' => 'Fiscal Year',
+            'permissions' => ['list' => 'List', 'add' => 'Create', 'edit' => 'Edit', 'view' => 'View', 'delete' => 'Delete', 'all' => 'All'],
+        ],
+        'ac_account' => [
+            'label' => 'Accounts',
+            'permissions' => ['list' => 'List', 'add' => 'Create', 'edit' => 'Edit', 'view' => 'View', 'delete' => 'Delete', 'all' => 'All'],
+        ],
+        'ac_master_particular' => [
+            'label' => 'Master Particular',
+            'permissions' => ['list' => 'List', 'add' => 'Create', 'edit' => 'Edit', 'view' => 'View', 'delete' => 'Delete', 'all' => 'All'],
+        ],
+        'ac_particular' => [
+            'label' => 'Particular',
+            'permissions' => ['list' => 'List', 'add' => 'Create', 'edit' => 'Edit', 'view' => 'View', 'delete' => 'Delete', 'all' => 'All'],
+        ],
+        'ac_balance_receive' => [
+            'label' => 'Cash Receive',
+            'permissions' => ['list' => 'List', 'add' => 'Create', 'edit' => 'Edit', 'view' => 'View', 'delete' => 'Delete', 'force_delete' => 'Force Delete', 'import' => 'Import', 'approve' => 'Approve', 'all' => 'All'],
+        ],
+        'ac_expense' => [
+            'label' => 'Expense',
+            'permissions' => ['list' => 'List', 'add' => 'Create', 'edit' => 'Edit', 'view' => 'View', 'delete' => 'Delete', 'force_delete' => 'Force Delete', 'import' => 'Import', 'approve' => 'Approve', 'all' => 'All'],
+        ],
+        'ac_expense_iou' => [
+            'label' => 'Expense IOU',
+            'permissions' => ['list' => 'List', 'add' => 'Create', 'edit' => 'Edit', 'view' => 'View', 'delete' => 'Delete', 'force_delete' => 'Force Delete', 'approve' => 'Approve', 'all' => 'All'],
+        ],
+        'ac_transaction' => [
+            'label' => 'Transactions',
+            'permissions' => ['list' => 'List', 'view' => 'View', 'all' => 'All'],
+        ],
+        'ac_day_end_report' => [
+            'label' => 'Day End Report (cash in hand + expenses; gets the daily mail)',
+            'permissions' => ['view' => 'View + Daily Mail', 'all' => 'All'],
+        ],
+        'ac_report' => [
+            'label' => 'Reports',
+            'permissions' => ['view' => 'View', 'export' => 'Export', 'all' => 'All'],
+        ],
+    ],
+];

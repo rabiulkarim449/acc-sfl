@@ -1,0 +1,483 @@
+@extends(adminTheme().'layouts.app')
+
+@section('title')
+    <title>{{ websiteTitle('Cash Receive') }}</title>
+@endsection
+
+@section('contents')
+<div class="flex-grow-1">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="fa-solid fa-hand-holding-dollar mr-2 text-success"></i>Cash Receive</h4>
+            <div>
+                <a href="{{ route('acc-sfl.balance-receives.print', request()->query()) }}" target="_blank" class="btn btn-sm ui-act ui-act-print" title="Print"><i class="fa-solid fa-print"></i> Print</a>
+                <a href="{{ route('acc-sfl.balance-receives.export', request()->query()) }}" class="btn btn-sm ui-act ui-act-excel" title="Export Excel"><i class="fa-solid fa-file-excel"></i> Export Excel</a>
+                @can('ac_balance_receive.import')
+                <a href="{{ route('acc-sfl.import-template.download') }}" class="btn btn-sm d-none ui-act ui-act-download" title="Download Import Template"><i class="fa-solid fa-download"></i> Download Import Template</a>
+                <a href="{{ route('acc-sfl.balance-receives.import') }}" class="btn btn-sm ui-act ui-act-import" title="Balance Import"><i class="fa-solid fa-file-import"></i> Balance Import</a>
+                @endcan
+                @can('ac_balance_receive.add')
+                <button type="button" class="btn btn-sm rounded-pill px-3 ui-act ui-act-create" data-toggle="modal" data-target="#createReceiveModal" title="Add Cash Receive"><i class="fa-solid fa-plus"></i> Add Cash Receive</button>
+                @endcan
+            </div>
+        </div>
+        <div class="card-body">
+            @include('acc-sfl::admin.partials.alerts')
+
+            <form method="GET" class="row mb-3 align-items-end">
+                <div class="col-md-3 mb-2">
+                    <label class="form-label mb-1">Search</label>
+                    <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Search receive no.">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label mb-1">Branch</label>
+                    <select name="branch_id" class="form-control form-control-sm">
+                        <option value="">All Branches</option>
+                        @foreach($branches as $branch)
+                        <option value="{{ $branch->id }}" @selected((string) request('branch_id') === (string) $branch->id)>{{ $branch->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label mb-1">Account</label>
+                    <select name="account_id" class="form-control form-control-sm">
+                        <option value="">All Accounts</option>
+                        @foreach($accounts as $account)
+                        <option value="{{ $account->id }}" @selected((string) request('account_id') === (string) $account->id)>{{ $account->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label mb-1">Master Particular</label>
+                    <select name="master_particular_id" class="form-control form-control-sm">
+                        <option value="">All</option>
+                        @foreach($particulars as $master)
+                        <option value="{{ $master->id }}" @selected((string) request('master_particular_id') === (string) $master->id)>{{ $master->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <label class="form-label mb-1">Particular</label>
+                    <select name="particular_id" class="form-control form-control-sm">
+                        <option value="">All Particulars</option>
+                        @foreach($particulars as $master)
+                        <optgroup label="{{ $master->name }}">
+                            @foreach($master->particulars as $particular)
+                            <option value="{{ $particular->id }}" @selected((string) request('particular_id') === (string) $particular->id)>{{ $particular->code }} - {{ $particular->name }}</option>
+                            @endforeach
+                        </optgroup>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label mb-1">From Date</label>
+                    <input type="date" name="from_date" value="{{ request('from_date') }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label mb-1">To Date</label>
+                    <input type="date" name="to_date" value="{{ request('to_date') }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label mb-1">Status</label>
+                    <select name="status" class="form-control form-control-sm">
+                        <option value="">All Statuses</option>
+                        <option value="pending" @selected(request('status') === 'pending')>Pending</option>
+                        <option value="approved" @selected(request('status') === 'approved')>Approved</option>
+                        <option value="rejected" @selected(request('status') === 'rejected')>Rejected</option>
+                    </select>
+                </div>
+                @include('acc-sfl::admin.partials.sort-filter', ['noLabel' => 'Receive No.'])
+                <div class="col-md-2">
+                    <button class="btn btn-sm ui-act ui-act-filter" title="Filter"><i class="fa-solid fa-filter"></i> Filter</button>
+                    <a href="{{ route('acc-sfl.balance-receives.index') }}" class="btn btn-sm ui-act ui-act-reset" title="Reset"><i class="fa-solid fa-rotate-left"></i> Reset</a>
+                </div>
+            </form>
+
+            <div class="table-responsive mt-2">
+                <table id="receivesTable" class="table table-bordered table-sm mb-0" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Receive No.</th>
+                            <th>Date</th>
+                            <th>Branch</th>
+                            <th>Account</th>
+                            <th>Particular</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($balanceReceives as $receive)
+                        <tr>
+                            <td>{{ $receive->receive_no }}</td>
+                            <td>{{ $receive->receive_date->format('d M Y') }}</td>
+                            <td>{{ $receive->branch->name }}</td>
+                            <td>{{ $receive->account->name }}</td>
+                            <td>{{ $receive->particular->code }} - {{ $receive->particular->name }}</td>
+                            <td>{{ number_format($receive->amount, 2) }}</td>
+                            <td>
+                                <span class="badge {{ ['pending' => 'badge-warning', 'approved' => 'badge-success', 'rejected' => 'badge-danger'][$receive->status] ?? 'badge-secondary' }} p-1">{{ ucfirst($receive->status) }}</span>
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn-custom ui-act ui-act-view" title="View" data-toggle="modal" data-target="#viewReceiveModal"
+                                    data-no="{{ $receive->receive_no }}" data-date="{{ $receive->receive_date->format('d M Y') }}"
+                                    data-branch="{{ $receive->branch->name }}" data-account="{{ $receive->account->name }}"
+                                    data-particular="{{ $receive->particular->code }} - {{ $receive->particular->name }}" data-amount="{{ number_format($receive->amount, 2) }}"
+                                    data-description="{{ $receive->description }}"
+                                    data-attachments="{{ json_encode($receive->galleryFiles()) }}"
+                                    data-creator="{{ $receive->creator->name ?? '-' }}"><i class="fa-solid fa-eye"></i></button>
+                                @if(view()->exists('components.approval-remind'))<x-approval-remind :model="$receive" />@endif
+                                @can('ac_balance_receive.approve')
+                                @if($receive->status === 'pending')
+                                <button type="button" class="btn-custom ui-act ui-act-approve" title="Approve" data-toggle="modal" data-target="#approveReceiveModal"
+                                    data-action="{{ route('acc-sfl.balance-receives.approve', $receive) }}"><i class="fa-solid fa-check"></i></button>
+                                <button type="button" class="btn-custom ui-act ui-act-reject" title="Reject" data-toggle="modal" data-target="#rejectReceiveModal"
+                                    data-action="{{ route('acc-sfl.balance-receives.reject', $receive) }}"><i class="fa-solid fa-xmark"></i></button>
+                                @endif
+                                @endcan
+                                @can('ac_balance_receive.edit')
+                                @if($receive->status === 'pending')
+                                <button type="button" class="btn-custom ui-act ui-act-edit" title="Edit" data-toggle="modal" data-target="#editReceiveFullModal"
+                                    data-action="{{ route('acc-sfl.balance-receives.update', $receive) }}"
+                                    data-receive-date="{{ $receive->receive_date->toDateString() }}"
+                                    data-branch-id="{{ $receive->branch_id }}" data-account-id="{{ $receive->account_id }}"
+                                    data-particular-id="{{ $receive->particular_id }}" data-amount="{{ $receive->amount }}"
+                                    data-description="{{ $receive->description }}"><i class="fa-solid fa-pen-to-square"></i></button>
+                                @else
+                                <button type="button" class="btn-custom ui-act ui-act-edit" title="Edit" data-toggle="modal" data-target="#editReceiveModal"
+                                    data-action="{{ route('acc-sfl.balance-receives.update', $receive) }}"
+                                    data-description="{{ $receive->description }}"><i class="fa-solid fa-pen-to-square"></i></button>
+                                @endif
+                                @endcan
+                                @can('ac_balance_receive.delete')
+                                @if($receive->status !== 'approved')
+                                <button type="button" class="btn-custom ui-act ui-act-delete" title="Delete" data-toggle="modal" data-target="#deleteReceiveModal"
+                                    data-action="{{ route('acc-sfl.balance-receives.destroy', $receive) }}"><i class="fa-solid fa-trash"></i></button>
+                                @endif
+                                @endcan
+                                @can('ac_balance_receive.force_delete')
+                                @if($receive->status === 'approved')
+                                <button type="button" class="btn-custom d-none ui-act ui-act-delete" title="Force Delete (reverses posted transaction)" data-toggle="modal" data-target="#forceDeleteReceiveModal"
+                                    data-action="{{ route('acc-sfl.balance-receives.force-delete', $receive) }}"><i class="fa-solid fa-trash"></i></button>
+                                @endif
+                                @endcan
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            {{ $balanceReceives->links('pagination::bootstrap-5') }}
+        </div>
+    </div>
+</div>
+
+{{-- Create Modal --}}
+<div class="modal fade" id="createReceiveModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('acc-sfl.balance-receives.store') }}" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Cash Receive</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-3 form-group">
+                            <label>Receive Date <span class="text-danger">*</span></label>
+                            <input type="date" name="receive_date" class="form-control" value="{{ now()->toDateString() }}" required>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label>Branch <span class="text-danger">*</span></label>
+                            <select name="branch_id" class="form-control" required>
+                                <option value="">-- Select Branch --</option>
+                                @foreach($branches as $branch)
+                                <option value="{{ $branch->id }}" @selected($branches->count() === 1)>{{ $branch->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label>Account <span class="text-danger">*</span></label>
+                            <select name="account_id" class="form-control" required @disabled($accounts->count() === 1)>
+                                <option value="">-- Select Account --</option>
+                                @foreach($accounts as $account)
+                                <option value="{{ $account->id }}" @selected($accounts->count() === 1)>{{ $account->name }}</option>
+                                @endforeach
+                            </select>
+                            @if($accounts->count() === 1)
+                            <input type="hidden" name="account_id" value="{{ $accounts->first()->id }}">
+                            @endif
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label>Particular <span class="text-danger">*</span></label>
+                            <select name="particular_id" class="form-control" required>
+                                <option value="">-- Select Particular --</option>
+                                @foreach($particulars as $master)
+                                <optgroup label="{{ $master->name }}">
+                                    @foreach($master->particulars as $particular)
+                                    <option value="{{ $particular->id }}">{{ $particular->code ? "{$particular->code} - " : '' }}{{ $particular->name }}</option>
+                                    @endforeach
+                                </optgroup>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label>Amount <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0.01" name="amount" class="form-control" required>
+                        </div>
+                        <div class="col-12 form-group">
+                            <label>Description</label>
+                            <textarea name="description" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="col-12 form-group">
+                            <label>Attachment</label>
+                            <input type="file" name="attachments[]" class="form-control-file" multiple>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm ui-act ui-act-cancel" data-dismiss="modal" title="Close"><i class="fa-solid fa-ban"></i> Close</button>
+                    <button type="submit" class="btn btn-sm ui-act ui-act-save" title="Save"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Full Edit Modal — only used while still Pending (nothing posted yet, so everything's editable) --}}
+<div class="modal fade" id="editReceiveFullModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <form method="POST" id="editReceiveFullForm" enctype="multipart/form-data">
+                @csrf
+                @method('PUT')
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Cash Receive</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-3 form-group">
+                            <label>Receive Date <span class="text-danger">*</span></label>
+                            <input type="date" name="receive_date" id="edit_full_receive_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label>Branch <span class="text-danger">*</span></label>
+                            <select name="branch_id" id="edit_full_branch_id" class="form-control" required>
+                                <option value="">-- Select Branch --</option>
+                                @foreach($branches as $branch)
+                                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label>Account <span class="text-danger">*</span></label>
+                            <select name="account_id" id="edit_full_account_id" class="form-control" required>
+                                <option value="">-- Select Account --</option>
+                                @foreach($accounts as $account)
+                                <option value="{{ $account->id }}">{{ $account->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label>Particular <span class="text-danger">*</span></label>
+                            <select name="particular_id" id="edit_full_particular_id" class="form-control" required>
+                                <option value="">-- Select Particular --</option>
+                                @foreach($particulars as $master)
+                                <optgroup label="{{ $master->name }}">
+                                    @foreach($master->particulars as $particular)
+                                    <option value="{{ $particular->id }}">{{ $particular->code ? "{$particular->code} - " : '' }}{{ $particular->name }}</option>
+                                    @endforeach
+                                </optgroup>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label>Amount <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0.01" name="amount" id="edit_full_amount" class="form-control" required>
+                        </div>
+                        <div class="col-12 form-group">
+                            <label>Description</label>
+                            <textarea name="description" id="edit_full_description" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="col-12 form-group">
+                            <label>Attachment (upload to replace)</label>
+                            <input type="file" name="attachments[]" class="form-control-file" multiple>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm ui-act ui-act-cancel" data-dismiss="modal" title="Close"><i class="fa-solid fa-ban"></i> Close</button>
+                    <button type="submit" class="btn btn-sm ui-act ui-act-save" title="Update"><i class="fa-solid fa-floppy-disk"></i> Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Edit Modal — financial fields are locked once a transaction has posted; only metadata is editable --}}
+<div class="modal fade" id="editReceiveModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form method="POST" id="editReceiveForm" enctype="multipart/form-data">
+                @csrf
+                @method('PUT')
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Cash Receive</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">Date, branch, account, particular and amount are locked after the entry posts to the ledger. Only description/attachment can be updated.</p>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea name="description" id="edit_receive_description" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Attachment (upload to replace)</label>
+                        <input type="file" name="attachments[]" class="form-control-file" multiple>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm ui-act ui-act-cancel" data-dismiss="modal" title="Close"><i class="fa-solid fa-ban"></i> Close</button>
+                    <button type="submit" class="btn btn-sm ui-act ui-act-save" title="Update"><i class="fa-solid fa-floppy-disk"></i> Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- View Modal --}}
+<div class="modal fade" id="viewReceiveModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cash Receive Details</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-sm">
+                    <tr><th>Receive No.</th><td id="view_receive_no"></td></tr>
+                    <tr><th>Date</th><td id="view_receive_date"></td></tr>
+                    <tr><th>Branch</th><td id="view_receive_branch"></td></tr>
+                    <tr><th>Account</th><td id="view_receive_account"></td></tr>
+                    <tr><th>Particular</th><td id="view_receive_particular"></td></tr>
+                    <tr><th>Amount</th><td id="view_receive_amount"></td></tr>
+                    <tr><th>Description</th><td id="view_receive_description"></td></tr>
+                    <tr><th>Attachments</th><td id="view_receive_attachment" style="min-width:280px;"></td></tr>
+                    <tr><th>Recorded By</th><td id="view_receive_creator"></td></tr>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm ui-act ui-act-cancel" data-dismiss="modal" title="Close"><i class="fa-solid fa-ban"></i> Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@include('acc-sfl::admin.partials.delete-confirm-modal', ['modalId' => 'deleteReceiveModal', 'label' => 'cash receive'])
+@include('acc-sfl::admin.partials.delete-confirm-modal', [
+    'modalId' => 'forceDeleteReceiveModal',
+    'title' => 'Confirm Force Delete',
+    'warning' => 'This cash receive has already been approved and posted to the ledger. Force deleting it will reverse the posted transaction (restoring the account balance) and PERMANENTLY delete it — this cannot be undone.',
+    'buttonLabel' => 'Force Delete',
+])
+
+{{-- Approve Modal --}}
+<div class="modal fade" id="approveReceiveModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form method="POST" id="approveReceiveForm">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title">Approve Cash Receive</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">Approving posts this cash receive to the ledger and adds it to the account balance. Continue?</p>
+                    <div class="form-group mb-0">
+                        <label>Remarks (optional)</label>
+                        <textarea name="remarks" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm ui-act ui-act-cancel" data-dismiss="modal" title="Close"><i class="fa-solid fa-ban"></i> Close</button>
+                    <button type="submit" class="btn btn-sm ui-act ui-act-approve" title="Approve"><i class="fa-solid fa-check"></i> Approve</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Reject Modal --}}
+<div class="modal fade" id="rejectReceiveModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form method="POST" id="rejectReceiveForm">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title">Reject Cash Receive</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-0">
+                        <label>Remarks <span class="text-danger">*</span></label>
+                        <textarea name="remarks" class="form-control" rows="2" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm ui-act ui-act-cancel" data-dismiss="modal" title="Close"><i class="fa-solid fa-ban"></i> Close</button>
+                    <button type="submit" class="btn btn-sm ui-act ui-act-reject" title="Reject"><i class="fa-solid fa-xmark"></i> Reject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('js')
+@include('acc-sfl::admin.partials.attachment-gallery-assets')
+@include('acc-sfl::admin.partials.select2-init')
+<script>
+    $(function () {
+        $('#approveReceiveModal').on('show.bs.modal', function (event) {
+            $(this).find('form').attr('action', $(event.relatedTarget).data('action'));
+        });
+
+        $('#rejectReceiveModal').on('show.bs.modal', function (event) {
+            $(this).find('form').attr('action', $(event.relatedTarget).data('action'));
+        });
+
+        $('#editReceiveModal').on('show.bs.modal', function (event) {
+            var btn = $(event.relatedTarget);
+            $(this).find('form').attr('action', btn.data('action'));
+            $('#edit_receive_description').val(btn.data('description'));
+        });
+
+        $('#editReceiveFullModal').on('show.bs.modal', function (event) {
+            var btn = $(event.relatedTarget);
+            $(this).find('form').attr('action', btn.data('action'));
+            $('#edit_full_receive_date').val(btn.data('receive-date'));
+            $('#edit_full_branch_id').val(btn.data('branch-id')).trigger('change');
+            $('#edit_full_account_id').val(btn.data('account-id')).trigger('change');
+            $('#edit_full_particular_id').val(btn.data('particular-id')).trigger('change');
+            $('#edit_full_amount').val(btn.data('amount'));
+            $('#edit_full_description').val(btn.data('description'));
+        });
+
+        $('#viewReceiveModal').on('show.bs.modal', function (event) {
+            var btn = $(event.relatedTarget);
+            $('#view_receive_no').text(btn.data('no'));
+            $('#view_receive_date').text(btn.data('date'));
+            $('#view_receive_branch').text(btn.data('branch'));
+            $('#view_receive_account').text(btn.data('account'));
+            $('#view_receive_particular').text(btn.data('particular'));
+            $('#view_receive_amount').text(btn.data('amount'));
+            $('#view_receive_description').text(btn.data('description') || '-');
+            $('#view_receive_attachment').html(acGalleryHtml(btn.data('attachments') || []));
+            $('#view_receive_creator').text(btn.data('creator'));
+        });
+    });
+</script>
+@endpush

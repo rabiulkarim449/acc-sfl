@@ -1,0 +1,162 @@
+@extends(adminTheme().'layouts.app')
+
+@section('title')
+    <title>{{ websiteTitle('Cash Receive Report') }}</title>
+@endsection
+
+@section('contents')
+<div class="flex-grow-1">
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="fa-solid fa-hand-holding-dollar mr-2 text-success"></i>Cash Receive Report</h4>
+            <div>
+                <a href="{{ route('acc-sfl.reports.balance-receive.print', request()->query()) }}" target="_blank" class="btn btn-sm ui-act ui-act-print" title="Print"><i class="fa-solid fa-print"></i> Print</a>
+                @can('ac_report.export')
+                <a href="{{ route('acc-sfl.reports.balance-receive.export', request()->query()) }}" class="btn btn-sm ui-act ui-act-excel" title="Export Excel"><i class="fa-solid fa-file-excel"></i> Export Excel</a>
+                @endcan
+            </div>
+        </div>
+        <div class="card-body">
+            @include('acc-sfl::admin.partials.alerts')
+
+            <form method="GET" class="row align-items-end">
+                <div class="col-md-2 mb-2">
+                    <label class="form-label mb-1">Search</label>
+                    <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Receive no. / description">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label mb-1">Branch</label>
+                    <select name="branch_id" class="form-control form-control-sm">
+                        <option value="">All Branches</option>
+                        @foreach($branches as $branch)
+                        <option value="{{ $branch->id }}" @selected((string) request('branch_id') === (string) $branch->id)>{{ $branch->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label mb-1">Account</label>
+                    <select name="account_id" class="form-control form-control-sm">
+                        <option value="">All Accounts</option>
+                        @foreach($accounts as $account)
+                        <option value="{{ $account->id }}" @selected((string) request('account_id') === (string) $account->id)>{{ $account->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label mb-1">Master Particular</label>
+                    <select name="master_particular_id" class="form-control form-control-sm">
+                        <option value="">All</option>
+                        @foreach($masterParticulars as $master)
+                        <option value="{{ $master->id }}" @selected((string) request('master_particular_id') === (string) $master->id)>{{ $master->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <label class="form-label mb-1">Particular</label>
+                    @php
+                        $selectedParticularIds = array_map('strval', (array) request('particular_id', []));
+                    @endphp
+                    <select name="particular_id[]" class="form-control form-control-sm" multiple>
+                        @foreach($masterParticulars as $master)
+                        <optgroup label="{{ $master->name }}">
+                            @foreach($master->particulars as $particular)
+                            <option value="{{ $particular->id }}" @selected(in_array((string) $particular->id, $selectedParticularIds, true))>{{ $particular->code }} - {{ $particular->name }}</option>
+                            @endforeach
+                        </optgroup>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label mb-1">From Date</label>
+                    <input type="date" name="from_date" value="{{ request('from_date') }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label mb-1">To Date</label>
+                    <input type="date" name="to_date" value="{{ request('to_date') }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label mb-1">Status</label>
+                    @php
+                        $currentStatus = request('status', 'approved');
+                    @endphp
+                    <select name="status" class="form-control form-control-sm">
+                        <option value="approved" @selected($currentStatus === 'approved')>Approved</option>
+                        <option value="pending" @selected($currentStatus === 'pending')>Pending</option>
+                        <option value="rejected" @selected($currentStatus === 'rejected')>Rejected</option>
+                        <option value="all" @selected($currentStatus === 'all')>All</option>
+                    </select>
+                </div>
+                {{-- <div class="col-md-2 mb-2">
+                    <label class="form-label mb-1">Min Amount</label>
+                    <input type="number" step="0.01" name="min_amount" value="{{ request('min_amount') }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label mb-1">Max Amount</label>
+                    <input type="number" step="0.01" name="max_amount" value="{{ request('max_amount') }}" class="form-control form-control-sm">
+                </div> --}}
+                <div class="col-md-2">
+                    <button class="btn btn-sm ui-act ui-act-filter" title="Filter"><i class="fa-solid fa-filter"></i> Filter</button>
+                    <a href="{{ route('acc-sfl.reports.balance-receive.index') }}" class="btn btn-sm ui-act ui-act-reset" title="Reset"><i class="fa-solid fa-rotate-left"></i> Reset</a>
+                </div>
+                <div class="col-md-2 mb-2 offset-md-4">
+                    <div class="badge badge-primary p-2" style="font-size: 0.85rem;">Total Receive: BDT {{ number_format($totals['amount'], 2) }}</div>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Date</th>
+                            <th>Particular</th>
+                            <th>Description</th>
+                            <th>A/C Code</th>
+                            <th>Receiver</th>
+                            <th>Receive</th>
+                            <th>Balance</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($grouped as $code => $group)
+                        <tr class="table-warning font-weight-bold">
+                            <td colspan="9">{{ $code }} - {{ $group->first()->particular->name ?? 'N/A' }}</td>
+                        </tr>
+                        @foreach($group as $receive)
+                        @php
+                            $transaction = $receive->transactions->first();
+                            $balance = $transaction->balance ?? null;
+                        @endphp
+                        <tr>
+                            <td>{{ strtoupper($receive->receive_date->format('F')) }}</td>
+                            <td>{{ $receive->receive_date->format('d-m-y') }}</td>
+                            <td>{{ $receive->particular->name ?? '-' }}</td>
+                            <td>{{ $receive->description ?: '-' }}</td>
+                            <td>{{ $receive->particular->code ?? '-' }}</td>
+                            <td>-</td>
+                            <td class="text-right">{{ number_format($receive->amount, 2) }}</td>
+                            <td class="text-right">{{ $balance !== null ? number_format($balance, 2) : '-' }}</td>
+                            <td>-</td>
+                        </tr>
+                        @endforeach
+                        <tr class="table-secondary font-weight-bold">
+                            <td colspan="6" class="text-right">TOTAL {{ $code }}</td>
+                            <td class="text-right">{{ number_format($group->sum('amount'), 2) }}</td>
+                            <td colspan="2"></td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="9" class="text-center">No data available.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            {{ $receives->links('pagination::bootstrap-5') }}
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('js')
+@include('acc-sfl::admin.partials.select2-init')
+@endpush
